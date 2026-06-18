@@ -1,0 +1,23 @@
+# Virtual environment
+.venv/
+venv/
+ENV/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# IDEs
+.vscode/
+.idea/
+
+# Datasets and runs (large files)
+datasets/
+runs/
+
+# macOS
+.DS_Store
+
+# Temporary outputs
+output/

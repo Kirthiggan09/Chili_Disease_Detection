@@ -1,0 +1,6 @@
+# Training environment (Colab / desktop GPU)
+ultralytics>=8.2.0
+roboflow>=1.1.0
+openvino>=2024.0.0
+pyyaml>=6.0
+opencv-python>=4.8.0

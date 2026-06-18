@@ -1,0 +1,56 @@
+# ============================================================
+#  ChiliRover AI — Centralized Pipeline Configuration
+# ============================================================
+
+# --- Roboflow Dataset ---
+dataset:
+  workspace: "object-detection-dataset-9n0c2"   # Roboflow Universe workspace slug
+  project: "chilli-leaf-disease"                # Roboflow Universe project slug
+  version: 3                                    # Dataset version (2000 images, 5 classes)
+  api_key_env: "ROBOFLOW_API_KEY"      # Env-var name holding the API key
+  format: "yolov8"
+
+# --- Training ---
+training:
+  model: "yolov8n.pt"                  # Base model (nano backbone)
+  imgsz: 320                           # Input resolution (px)
+  epochs: 100
+  batch: 16                            # Reduce to 8 on low-VRAM GPUs
+  patience: 20                         # Early-stop patience
+  workers: 4
+  device: ""                           # "" = auto (GPU if available, else CPU)
+  project: "runs/train"
+  name: "chili_disease"
+
+# --- Augmentation (tuned for early-stage leaf spots) ---
+augmentation:
+  hsv_h: 0.02                          # Hue jitter
+  hsv_s: 0.70                          # High saturation shift — critical for spots
+  hsv_v: 0.40                          # Brightness variance
+  degrees: 15.0                        # Rotation range
+  translate: 0.15                      # Translation fraction
+  scale: 0.50                          # Scale range
+  shear: 5.0                           # Shear angle
+  flipud: 0.3                          # Vertical flip probability
+  fliplr: 0.5                          # Horizontal flip probability
+  mosaic: 1.0                          # Mosaic probability
+  mixup: 0.15                          # Mixup probability
+
+# --- Export ---
+export:
+  format: "openvino"
+  half: true                           # FP16 quantization
+  imgsz: 320
+  output_dir: "models"
+
+# --- Deployment (Raspberry Pi 5) ---
+deployment:
+  model_path: "models/best_openvino_model"
+  camera_index: 0                      # 0 = default camera
+  imgsz: 320
+  confidence: 0.40                     # Minimum detection confidence
+  iou_threshold: 0.45                  # NMS IoU threshold
+  warmup_runs: 3                       # Inference warm-up iterations
+  show_display: true                   # Show OpenCV window
+  save_output: false                   # Save annotated frames to disk
+  output_dir: "output"
