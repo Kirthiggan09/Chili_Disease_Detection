@@ -140,7 +140,7 @@ def train_model(config: dict, data_yaml: str) -> str:
     aug_kwargs = get_augmentation_kwargs(config)
 
     model_name = train_cfg.get("model", "yolov8n.pt")
-    imgsz = train_cfg.get("imgsz", 320)
+    imgsz = train_cfg.get("imgsz", 640)
     epochs = train_cfg.get("epochs", 100)
     batch = train_cfg.get("batch", 16)
     patience = train_cfg.get("patience", 20)
@@ -149,12 +149,18 @@ def train_model(config: dict, data_yaml: str) -> str:
     project = train_cfg.get("project", "runs/train")
     name = train_cfg.get("name", "chili_disease")
 
+    # Loss hyperparameters — tuned for small-object class imbalance
+    box_gain = train_cfg.get("box", 7.5)    # default YOLO = 7.5
+    cls_gain = train_cfg.get("cls", 0.5)    # default YOLO = 0.5
+
     print(f"\n{'='*60}")
     print(f"  TRAINING CONFIG")
     print(f"  Model:      {model_name}")
     print(f"  Resolution: {imgsz}×{imgsz}")
     print(f"  Epochs:     {epochs}")
     print(f"  Batch:      {batch}")
+    print(f"  Box loss:   {box_gain}")
+    print(f"  Cls loss:   {cls_gain}")
     print(f"  Device:     {device or 'auto'}")
     print(f"{'='*60}\n")
 
@@ -172,6 +178,9 @@ def train_model(config: dict, data_yaml: str) -> str:
         name=name,
         exist_ok=True,
         verbose=True,
+        # Loss function tuning
+        box=box_gain,
+        cls=cls_gain,
         # Unpack augmentation kwargs
         **aug_kwargs,
     )

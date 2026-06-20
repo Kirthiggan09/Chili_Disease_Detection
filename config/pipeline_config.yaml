@@ -6,14 +6,20 @@
 dataset:
   workspace: "object-detection-dataset-9n0c2"   # Roboflow Universe workspace slug
   project: "chilli-leaf-disease"                # Roboflow Universe project slug
-  version: 3                                    # Dataset version (2000 images, 5 classes)
+  version: 3                                    # Dataset version
   api_key_env: "ROBOFLOW_API_KEY"      # Env-var name holding the API key
   format: "yolov8"
+
+# --- Classes (4-class optimized) ---
+# 0: Cercospora_Leaf_Spot
+# 1: Healthy
+# 2: Chlorosis
+# 3: Powdery_Mildew
 
 # --- Training ---
 training:
   model: "yolov8n.pt"                  # Base model (nano backbone)
-  imgsz: 320                           # Input resolution (px)
+  imgsz: 640                           # Input resolution (px) — upgraded for early-lesion capture
   epochs: 100
   batch: 16                            # Reduce to 8 on low-VRAM GPUs
   patience: 20                         # Early-stop patience
@@ -21,6 +27,9 @@ training:
   device: ""                           # "" = auto (GPU if available, else CPU)
   project: "runs/train"
   name: "chili_disease"
+  # Loss hyperparameters — tuned for small-object class imbalance
+  box: 8.5                             # Box regression loss gain
+  cls: 2.0                             # Classification loss gain
 
 # --- Augmentation (tuned for early-stage leaf spots) ---
 augmentation:
@@ -40,17 +49,23 @@ augmentation:
 export:
   format: "openvino"
   half: true                           # FP16 quantization
-  imgsz: 320
+  imgsz: 640                           # Match training resolution
   output_dir: "models"
 
 # --- Deployment (Raspberry Pi 5) ---
 deployment:
   model_path: "models/best_openvino_model"
   camera_index: 0                      # 0 = default camera
-  imgsz: 320
+  imgsz: 640                           # Match training/export resolution
   confidence: 0.40                     # Minimum detection confidence
   iou_threshold: 0.45                  # NMS IoU threshold
   warmup_runs: 3                       # Inference warm-up iterations
   show_display: true                   # Show OpenCV window
   save_output: false                   # Save annotated frames to disk
   output_dir: "output"
+
+# --- Telemetry (MCU serial sensor data) ---
+telemetry:
+  serial_port: "/dev/ttyUSB0"          # MCU serial port
+  baud_rate: 115200                    # Serial baud rate
+  timeout: 0.1                         # Serial read timeout (seconds)

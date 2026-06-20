@@ -5,6 +5,12 @@ Helper functions for the onboard inference script:
   • Bounding-box drawing with class-specific colours
   • Smoothed FPS counter (rolling average)
   • YAML config loader
+
+Classes (4-class optimized):
+  0: Cercospora_Leaf_Spot
+  1: Healthy
+  2: Chlorosis
+  3: Powdery_Mildew
 """
 
 import time
@@ -17,11 +23,10 @@ import yaml
 
 # ── Class colour palette (visually distinct, high contrast on foliage) ──
 CLASS_COLOURS = [
-    (72, 209, 55),    # green  — healthy
-    (55, 100, 235),   # red    — bacterial_spot
-    (55, 195, 235),   # orange — leaf_curl
-    (200, 80, 200),   # purple — anthracnose
-    (55, 235, 235),   # yellow — nutrient_deficiency
+    (55, 100, 235),   # red    — Cercospora_Leaf_Spot
+    (72, 209, 55),    # green  — Healthy
+    (55, 235, 235),   # yellow — Chlorosis
+    (200, 80, 200),   # purple — Powdery_Mildew
     (235, 150, 55),   # blue   — extra class slot
     (100, 235, 200),  # teal   — extra class slot
     (180, 55, 235),   # magenta

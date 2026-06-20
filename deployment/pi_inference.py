@@ -6,7 +6,7 @@ Production-ready real-time chili disease detection.
 
 • Loads an OpenVINO-optimized YOLOv8n model
 • Captures frames from Pi Camera / USB camera via OpenCV
-• Runs inference frame-by-frame at 320×320
+• Runs inference frame-by-frame at 640×640
 • Renders low-latency bounding boxes with class labels
 • Displays smoothed FPS counter
 
