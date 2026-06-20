@@ -21,9 +21,9 @@ training:
   model: "yolov8n.pt"                  # Base model (nano backbone)
   imgsz: 640                           # Input resolution (px) — upgraded for early-lesion capture
   epochs: 100
-  batch: 16                            # Reduce to 8 on low-VRAM GPUs
+  batch: 4                             # Reduce to 8 on low-VRAM GPUs
   patience: 20                         # Early-stop patience
-  workers: 4
+  workers: 2
   device: ""                           # "" = auto (GPU if available, else CPU)
   project: "runs/train"
   name: "chili_disease"
@@ -50,11 +50,11 @@ export:
   format: "openvino"
   half: true                           # FP16 quantization
   imgsz: 640                           # Match training resolution
-  output_dir: "models"
+  output_dir: "weights/openvino_model"
 
 # --- Deployment (Raspberry Pi 5) ---
 deployment:
-  model_path: "models/best_openvino_model"
+  model_path: "weights/openvino_model/best_openvino_model"
   camera_index: 0                      # 0 = default camera
   imgsz: 640                           # Match training/export resolution
   confidence: 0.40                     # Minimum detection confidence

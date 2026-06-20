@@ -16,7 +16,9 @@ Usage (Colab / local):
 import argparse
 import os
 import sys
+import sys
 from pathlib import Path
+import multiprocessing
 
 import yaml
 
@@ -77,6 +79,12 @@ def download_dataset(config: dict) -> str:
     workspace/project is configured.
     """
     ds_cfg = config.get("dataset", {})
+
+    # Check if we already have the dataset locally
+    local_data_yaml = PROJECT_ROOT / "datasets" / "data.yaml"
+    if local_data_yaml.exists():
+        print(f"[INFO] Local dataset found at {local_data_yaml}, skipping download.")
+        return str(local_data_yaml)
 
     # Resolve API key: CLI override > env var > None
     api_key = ds_cfg.get("_api_key_override") or os.getenv(
@@ -205,6 +213,7 @@ def export_to_openvino(config: dict, weights_path: str) -> str:
     Returns the path to the exported model directory.
     """
     from ultralytics import YOLO
+    import shutil
 
     export_cfg = config.get("export", {})
     imgsz = export_cfg.get("imgsz", 320)
@@ -221,10 +230,17 @@ def export_to_openvino(config: dict, weights_path: str) -> str:
     model = YOLO(weights_path)
     export_path = model.export(format="openvino", imgsz=imgsz, half=half)
 
-    print(f"\n[OK] OpenVINO model exported to: {export_path}")
+    # Move the exported model to the configured output_dir
+    output_dir.mkdir(parents=True, exist_ok=True)
+    final_path = output_dir / "best_openvino_model"
+    if final_path.exists():
+        shutil.rmtree(final_path)
+    shutil.move(export_path, final_path)
+
+    print(f"\n[OK] OpenVINO model exported to: {final_path}")
     print(f"[INFO] Copy this directory to your Raspberry Pi 5 for deployment.")
 
-    return str(export_path)
+    return str(final_path)
 
 
 # ===================================================================
@@ -278,4 +294,5 @@ def main():
 
 
 if __name__ == "__main__":
+    multiprocessing.freeze_support()
     main()

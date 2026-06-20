@@ -1,0 +1,28 @@
+description: Ultralytics best model trained on C:\Users\Kirthiggan\OneDrive\Documents\Chilli
+  Disease Detection\datasets\data.yaml
+author: Ultralytics
+date: '2026-06-21T02:04:45.962925'
+version: 8.4.71
+license: AGPL-3.0 License (https://ultralytics.com/license)
+docs: https://docs.ultralytics.com
+stride: 32
+task: detect
+batch: 1
+imgsz:
+- 640
+- 640
+names:
+  0: Cercospora_Leaf_Spot
+  1: Healthy
+  2: Chlorosis
+  3: Powdery_Mildew
+args:
+  data: null
+  batch: 1
+  fraction: 1.0
+  half: true
+  int8: false
+  dynamic: false
+  nms: false
+channels: 3
+end2end: false
