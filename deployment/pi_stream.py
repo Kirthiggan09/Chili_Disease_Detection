@@ -65,6 +65,58 @@ def index():
     return render_template_string(INDEX_HTML)
 
 
+def filter_detections(boxes, frame_height: int):
+    """
+    Post-processing filter to suppress false positives.
+
+    Filters applied (in order):
+      1. Confidence threshold:  drop if conf < 0.65
+      2. Area bounds:           drop if box < 30x30 or > 500x500 px
+      3. ROI mask:              drop if box center falls in top 30% of Y-axis
+
+    Parameters
+    ----------
+    boxes : ultralytics.engine.results.Boxes
+        Raw detection boxes from YOLO result.
+    frame_height : int
+        Height of the inference frame (pixels).
+
+    Returns
+    -------
+    list[int]
+        Indices of boxes that passed all filters.
+    """
+    MIN_CONF = 0.65
+    MIN_SIDE = 30
+    MAX_SIDE = 500
+    SKY_RATIO = 0.30
+
+    sky_limit = int(frame_height * SKY_RATIO)
+    kept = []
+
+    for i, box in enumerate(boxes):
+        conf = float(box.conf[0])
+        if conf < MIN_CONF:
+            continue
+
+        x1, y1, x2, y2 = map(int, box.xyxy[0].tolist())
+        bw = x2 - x1
+        bh = y2 - y1
+
+        if bw < MIN_SIDE or bh < MIN_SIDE:
+            continue
+        if bw > MAX_SIDE or bh > MAX_SIDE:
+            continue
+
+        cy = (y1 + y2) // 2
+        if cy < sky_limit:
+            continue
+
+        kept.append(i)
+
+    return kept
+
+
 def generate_frames():
     """
     Generator function that grabs frames from the camera,
@@ -101,9 +153,14 @@ def generate_frames():
         # Update FPS
         fps = fps_counter.tick()
 
-        # Draw detections
+        # ── Post-processing: filter false positives ──
+        raw_boxes = results[0].boxes
+        kept_idx = filter_detections(raw_boxes, imgsz)
+        filtered_boxes = raw_boxes[kept_idx] if kept_idx else raw_boxes[:0]
+
+        # Draw only filtered detections
         annotated_frame = draw_detections(
-            frame_resized, results[0].boxes, names, fps=fps
+            frame_resized, filtered_boxes, names, fps=fps
         )
 
         # Encode frame as JPEG
