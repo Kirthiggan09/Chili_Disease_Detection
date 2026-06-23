@@ -138,7 +138,7 @@ def generate_frames():
             time.sleep(0.1)
             continue
 
-        # Resize to match our trained 640x640 resolution
+        # Resize to match our exported 480x480 FP16 resolution
         frame_resized = cv2.resize(frame, (imgsz, imgsz))
 
         # Run OpenVINO inference

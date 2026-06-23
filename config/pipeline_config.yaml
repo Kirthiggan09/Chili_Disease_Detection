@@ -49,14 +49,14 @@ augmentation:
 export:
   format: "openvino"
   half: true                           # FP16 quantization
-  imgsz: 640                           # Match training resolution
+  imgsz: 480                           # Balanced resolution for Pi 5 speed/accuracy
   output_dir: "weights/openvino_model"
 
 # --- Deployment (Raspberry Pi 5) ---
 deployment:
   model_path: "weights/openvino_model/best_openvino_model"
   camera_index: 0                      # 0 = default camera
-  imgsz: 640                           # Match training/export resolution
+  imgsz: 480                           # Match export resolution (480px FP16)
   confidence: 0.40                     # Minimum detection confidence
   iou_threshold: 0.45                  # NMS IoU threshold
   warmup_runs: 3                       # Inference warm-up iterations

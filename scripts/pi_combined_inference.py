@@ -4,7 +4,7 @@ ChiliRover AI — Combined Inference with Multi-Modal Sensor Telemetry
 =====================================================================
 Production-ready real-time chili disease detection with live sensor HUD.
 
-• Loads an OpenVINO-optimized YOLOv8n model (640×640, 4-class)
+• Loads an OpenVINO-optimized YOLOv8n model (480×480 FP16, 4-class)
 • Captures frames from Pi Camera / USB camera via OpenCV
 • Reads serial JSON telemetry from MCU (DHT11 + MQ3 sensors)
 • Overlays a live sensor HUD alongside YOLO bounding boxes
