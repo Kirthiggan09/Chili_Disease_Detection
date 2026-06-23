@@ -259,7 +259,7 @@ def init_camera(camera_index: int = 0) -> cv2.VideoCapture:
 #  Model Initialisation
 # ===================================================================
 
-def init_model(model_path: str, warmup_runs: int = 3, imgsz: int = 640):
+def init_model(model_path: str, warmup_runs: int = 3, imgsz: int = 480):
     """Load the OpenVINO YOLO model and run warm-up inferences."""
     try:
         from ultralytics import YOLO
@@ -291,9 +291,8 @@ def filter_detections(boxes, frame_height: int):
     Post-processing filter to suppress false positives.
 
     Filters applied (in order):
-      1. Confidence threshold:  drop if conf < 0.65
-      2. Area bounds:           drop if box < 15x15 or > 500x500 px
-      3. ROI mask:              drop if box center falls in top 30% of Y-axis
+      1. ROI mask: drop if box center falls in top 30% of Y-axis
+      Note: Area bounding filters have been completely removed to retain small spots.
 
     Parameters
     ----------
@@ -307,27 +306,12 @@ def filter_detections(boxes, frame_height: int):
     list[int]
         Indices of boxes that passed all filters.
     """
-    MIN_CONF = 0.65
-    MIN_SIDE = 15
-    MAX_SIDE = 500
     SKY_RATIO = 0.30
-
     sky_limit = int(frame_height * SKY_RATIO)
     kept = []
 
     for i, box in enumerate(boxes):
-        conf = float(box.conf[0])
-        if conf < MIN_CONF:
-            continue
-
         x1, y1, x2, y2 = map(int, box.xyxy[0].tolist())
-        bw = x2 - x1
-        bh = y2 - y1
-
-        if bw < MIN_SIDE or bh < MIN_SIDE:
-            continue
-        if bw > MAX_SIDE or bh > MAX_SIDE:
-            continue
 
         cy = (y1 + y2) // 2
         if cy < sky_limit:
@@ -346,7 +330,7 @@ def run_combined_loop(
     model,
     cap: cv2.VideoCapture,
     telemetry_reader: TelemetryReader,
-    imgsz: int = 640,
+    imgsz: int = 480,
     confidence: float = 0.40,
     iou_threshold: float = 0.45,
     show_display: bool = True,
@@ -386,8 +370,15 @@ def run_combined_loop(
                 time.sleep(0.1)
                 continue
 
-            # Resize to model input resolution
-            frame_resized = cv2.resize(frame, (imgsz, imgsz))
+            # 1. Digital Center-Crop: center 50% of the image
+            h, w = frame.shape[:2]
+            crop_h, crop_w = h // 2, w // 2
+            start_y = (h - crop_h) // 2
+            start_x = (w - crop_w) // 2
+            frame_cropped = frame[start_y:start_y+crop_h, start_x:start_x+crop_w]
+
+            # 2. Resize to model input resolution (mimics macro perspective)
+            frame_resized = cv2.resize(frame_cropped, (imgsz, imgsz))
 
             # Run YOLO inference
             results = model.predict(
@@ -506,7 +497,7 @@ def main():
     # Resolve settings (CLI overrides config)
     model_path = args.model or deploy.get("model_path", "models/best_openvino_model")
     camera_idx = args.camera if args.camera is not None else deploy.get("camera_index", 0)
-    imgsz = args.imgsz or deploy.get("imgsz", 640)
+    imgsz = args.imgsz or deploy.get("imgsz", 480)
     confidence = args.confidence or deploy.get("confidence", 0.40)
     iou_threshold = deploy.get("iou_threshold", 0.45)
     warmup = deploy.get("warmup_runs", 3)

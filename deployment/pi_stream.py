@@ -70,9 +70,8 @@ def filter_detections(boxes, frame_height: int):
     Post-processing filter to suppress false positives.
 
     Filters applied (in order):
-      1. Confidence threshold:  drop if conf < 0.65
-      2. Area bounds:           drop if box < 15x15 or > 500x500 px
-      3. ROI mask:              drop if box center falls in top 30% of Y-axis
+      1. ROI mask: drop if box center falls in top 30% of Y-axis
+      Note: Area bounding filters have been completely removed to retain small spots.
 
     Parameters
     ----------
@@ -86,27 +85,12 @@ def filter_detections(boxes, frame_height: int):
     list[int]
         Indices of boxes that passed all filters.
     """
-    MIN_CONF = 0.65
-    MIN_SIDE = 15
-    MAX_SIDE = 500
     SKY_RATIO = 0.30
-
     sky_limit = int(frame_height * SKY_RATIO)
     kept = []
 
     for i, box in enumerate(boxes):
-        conf = float(box.conf[0])
-        if conf < MIN_CONF:
-            continue
-
         x1, y1, x2, y2 = map(int, box.xyxy[0].tolist())
-        bw = x2 - x1
-        bh = y2 - y1
-
-        if bw < MIN_SIDE or bh < MIN_SIDE:
-            continue
-        if bw > MAX_SIDE or bh > MAX_SIDE:
-            continue
 
         cy = (y1 + y2) // 2
         if cy < sky_limit:
@@ -120,12 +104,13 @@ def filter_detections(boxes, frame_height: int):
 def generate_frames():
     """
     Generator function that grabs frames from the camera,
-    runs YOLO inference, draws bounding boxes, and yields JPEG bytes.
+    applies a Digital Macro Zoom, runs YOLO inference, draws bounding boxes, 
+    and yields JPEG bytes.
     """
     global global_model, global_cap, global_config
 
     deploy_cfg = global_config.get("deployment", {})
-    imgsz = deploy_cfg.get("imgsz", 320)
+    imgsz = deploy_cfg.get("imgsz", 480)
     confidence = deploy_cfg.get("confidence", 0.40)
     iou_threshold = deploy_cfg.get("iou_threshold", 0.45)
     names = global_model.names
@@ -138,8 +123,15 @@ def generate_frames():
             time.sleep(0.1)
             continue
 
-        # Resize to match our exported 320x320 FP16 resolution
-        frame_resized = cv2.resize(frame, (imgsz, imgsz))
+        # 1. Digital Center-Crop: center 50% of the image
+        h, w = frame.shape[:2]
+        crop_h, crop_w = h // 2, w // 2
+        start_y = (h - crop_h) // 2
+        start_x = (w - crop_w) // 2
+        frame_cropped = frame[start_y:start_y+crop_h, start_x:start_x+crop_w]
+
+        # 2. Resize to match our new 480x480 resolution (mimics macro perspective)
+        frame_resized = cv2.resize(frame_cropped, (imgsz, imgsz))
 
         # Run OpenVINO inference
         results = global_model.predict(
@@ -207,7 +199,7 @@ def main():
     model_path = args.model or deploy.get("model_path", "models/best_openvino_model")
     camera_idx = args.camera if args.camera is not None else deploy.get("camera_index", 0)
     warmup = deploy.get("warmup_runs", 3)
-    imgsz = deploy.get("imgsz", 320)
+    imgsz = deploy.get("imgsz", 480)
 
     print("\n🌶️  ChiliRover AI — Starting Video Streamer\n")
 
