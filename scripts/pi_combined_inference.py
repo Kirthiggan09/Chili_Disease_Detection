@@ -4,7 +4,7 @@ ChiliRover AI — Combined Inference with Multi-Modal Sensor Telemetry
 =====================================================================
 Production-ready real-time chili disease detection with live sensor HUD.
 
-• Loads an OpenVINO-optimized YOLOv8n model (480×480 FP16, 4-class)
+• Loads an OpenVINO-optimized YOLOv8n model (320×320 FP16, 4-class)
 • Captures frames from Pi Camera / USB camera via OpenCV
 • Reads serial JSON telemetry from MCU (DHT11 + MQ3 sensors)
 • Overlays a live sensor HUD alongside YOLO bounding boxes
@@ -292,7 +292,7 @@ def filter_detections(boxes, frame_height: int):
 
     Filters applied (in order):
       1. Confidence threshold:  drop if conf < 0.65
-      2. Area bounds:           drop if box < 30x30 or > 500x500 px
+      2. Area bounds:           drop if box < 15x15 or > 500x500 px
       3. ROI mask:              drop if box center falls in top 30% of Y-axis
 
     Parameters
@@ -308,7 +308,7 @@ def filter_detections(boxes, frame_height: int):
         Indices of boxes that passed all filters.
     """
     MIN_CONF = 0.65
-    MIN_SIDE = 30
+    MIN_SIDE = 15
     MAX_SIDE = 500
     SKY_RATIO = 0.30
 

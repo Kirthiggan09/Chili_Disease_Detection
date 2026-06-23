@@ -71,7 +71,7 @@ def filter_detections(boxes, frame_height: int):
 
     Filters applied (in order):
       1. Confidence threshold:  drop if conf < 0.65
-      2. Area bounds:           drop if box < 30x30 or > 500x500 px
+      2. Area bounds:           drop if box < 15x15 or > 500x500 px
       3. ROI mask:              drop if box center falls in top 30% of Y-axis
 
     Parameters
@@ -87,7 +87,7 @@ def filter_detections(boxes, frame_height: int):
         Indices of boxes that passed all filters.
     """
     MIN_CONF = 0.65
-    MIN_SIDE = 30
+    MIN_SIDE = 15
     MAX_SIDE = 500
     SKY_RATIO = 0.30
 
@@ -138,7 +138,7 @@ def generate_frames():
             time.sleep(0.1)
             continue
 
-        # Resize to match our exported 480x480 FP16 resolution
+        # Resize to match our exported 320x320 FP16 resolution
         frame_resized = cv2.resize(frame, (imgsz, imgsz))
 
         # Run OpenVINO inference
