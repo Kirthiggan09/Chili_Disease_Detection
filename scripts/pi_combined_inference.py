@@ -4,7 +4,7 @@ ChiliRover AI — Combined Inference with Multi-Modal Sensor Telemetry
 =====================================================================
 Production-ready real-time chili disease detection with live sensor HUD.
 
-• Loads an OpenVINO-optimized YOLOv8n model (320×320 FP16, 4-class)
+• Loads a Hailo-optimized YOLOv8m model (.hef)
 • Captures frames from Pi Camera / USB camera via OpenCV
 • Reads serial JSON telemetry from MCU (DHT11 + MQ3 sensors)
 • Overlays a live sensor HUD alongside YOLO bounding boxes
@@ -259,8 +259,8 @@ def init_camera(camera_index: int = 0) -> cv2.VideoCapture:
 #  Model Initialisation
 # ===================================================================
 
-def init_model(model_path: str, warmup_runs: int = 3, imgsz: int = 480):
-    """Load the OpenVINO YOLO model and run warm-up inferences."""
+def init_model(model_path: str, warmup_runs: int = 3, imgsz: int = 800):
+    """Load the Hailo YOLO model and run warm-up inferences."""
     try:
         from ultralytics import YOLO
     except ImportError:
@@ -272,18 +272,19 @@ def init_model(model_path: str, warmup_runs: int = 3, imgsz: int = 480):
         print(f"[ERROR] Model not found at: {model_path}")
         sys.exit(1)
 
-    print(f"[INFO] Loading model from: {model_path}")
+    print(f"[INFO] Loading Hailo model from: {model_path}")
     model = YOLO(str(model_path), task="detect")
 
-    # Warm-up: prime OpenVINO execution kernels
+    # Warm-up: prime execution kernels
     print(f"[INFO] Running {warmup_runs} warm-up inferences...")
     dummy = np.zeros((imgsz, imgsz, 3), dtype=np.uint8)
     for i in range(warmup_runs):
         model.predict(dummy, imgsz=imgsz, verbose=False)
         print(f"  Warm-up {i+1}/{warmup_runs} done")
 
-    print("[OK] Model ready.\n")
+    print("[OK] Hailo Model ready.\n")
     return model
+
 
 
 def filter_detections(boxes, frame_height: int):
@@ -330,7 +331,7 @@ def run_combined_loop(
     model,
     cap: cv2.VideoCapture,
     telemetry_reader: TelemetryReader,
-    imgsz: int = 480,
+    imgsz: int = 800,
     confidence: float = 0.40,
     iou_threshold: float = 0.45,
     show_display: bool = True,
@@ -466,7 +467,7 @@ def parse_args() -> argparse.Namespace:
         help="Path to pipeline_config.yaml",
     )
     parser.add_argument("--model", type=str, default=None,
-                        help="Path to OpenVINO model directory")
+                        help="Path to Hailo model (.hef)")
     parser.add_argument("--camera", type=int, default=None, help="Camera index")
     parser.add_argument("--confidence", type=float, default=None)
     parser.add_argument("--imgsz", type=int, default=None)
@@ -495,9 +496,9 @@ def main():
     telem_cfg = config.get("telemetry", {})
 
     # Resolve settings (CLI overrides config)
-    model_path = args.model or deploy.get("model_path", "models/best_openvino_model")
+    model_path = args.model or deploy.get("model_path", "weights/hailo_model/best_hailo_model.hef")
     camera_idx = args.camera if args.camera is not None else deploy.get("camera_index", 0)
-    imgsz = args.imgsz or deploy.get("imgsz", 480)
+    imgsz = args.imgsz or deploy.get("imgsz", 800)
     confidence = args.confidence or deploy.get("confidence", 0.40)
     iou_threshold = deploy.get("iou_threshold", 0.45)
     warmup = deploy.get("warmup_runs", 3)

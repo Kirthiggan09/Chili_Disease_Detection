@@ -203,44 +203,56 @@ def train_model(config: dict, data_yaml: str) -> str:
 
 
 # ===================================================================
-#  4. OpenVINO Export
+#  4. Hailo Export (AI HAT+)
 # ===================================================================
 
-def export_to_openvino(config: dict, weights_path: str) -> str:
+def export_to_hailo(config: dict, weights_path: str) -> str:
     """
-    Export trained YOLO weights to OpenVINO IR format (FP16).
+    Export trained YOLO weights to Hailo Executable Format (HEF) with INT8 PTQ.
 
-    Returns the path to the exported model directory.
+    Returns the path to the exported model.
     """
     from ultralytics import YOLO
     import shutil
 
     export_cfg = config.get("export", {})
-    imgsz = export_cfg.get("imgsz", 320)
-    half = export_cfg.get("half", True)
-    output_dir = PROJECT_ROOT / export_cfg.get("output_dir", "models")
+    imgsz = export_cfg.get("imgsz", 800)
+    int8 = export_cfg.get("int8", True)
+    output_dir = PROJECT_ROOT / export_cfg.get("output_dir", "weights/hailo_model")
 
     print(f"\n{'='*60}")
-    print(f"  EXPORTING TO OPENVINO")
+    print(f"  EXPORTING TO HAILO (.HEF)")
     print(f"  Weights:    {weights_path}")
-    print(f"  Format:     OpenVINO IR ({'FP16' if half else 'FP32'})")
+    print(f"  Format:     Hailo Executable Format (INT8: {int8})")
     print(f"  Resolution: {imgsz}×{imgsz}")
     print(f"{'='*60}\n")
 
     model = YOLO(weights_path)
-    export_path = model.export(format="openvino", imgsz=imgsz, half=half)
+    
+    try:
+        # Note: Hailo export requires Hailo Dataflow Compiler to be installed on the host.
+        export_path = model.export(format="hef", imgsz=imgsz, int8=int8)
+    except Exception as e:
+        print(f"[ERROR] Failed to export to HEF. Ensure Hailo DFC is installed: {e}")
+        return ""
 
     # Move the exported model to the configured output_dir
     output_dir.mkdir(parents=True, exist_ok=True)
-    final_path = output_dir / "best_openvino_model"
-    if final_path.exists():
-        shutil.rmtree(final_path)
-    shutil.move(export_path, final_path)
-
-    print(f"\n[OK] OpenVINO model exported to: {final_path}")
-    print(f"[INFO] Copy this directory to your Raspberry Pi 5 for deployment.")
-
-    return str(final_path)
+    
+    # Ultralytics typically outputs .hef next to the original weights
+    hef_source = Path(weights_path).with_suffix('.hef')
+    final_path = output_dir / "best_hailo_model.hef"
+    
+    if hef_source.exists():
+        if final_path.exists():
+            final_path.unlink()
+        shutil.move(str(hef_source), str(final_path))
+        print(f"\n[OK] Hailo model exported to: {final_path}")
+        print(f"[INFO] Copy this file to your Raspberry Pi 5 for deployment on the AI HAT+.")
+        return str(final_path)
+    else:
+        print(f"\n[WARN] Expected HEF file at {hef_source} not found.")
+        return str(export_path)
 
 
 # ===================================================================
@@ -288,7 +300,7 @@ def main():
         data_yaml = download_dataset(config)
         weights_path = train_model(config, data_yaml)
 
-    export_to_openvino(config, weights_path)
+    export_to_hailo(config, weights_path)
 
     print("\n[OK] Pipeline complete!\n")
 

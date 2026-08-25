@@ -2,7 +2,7 @@
 
 Real-time chili plant disease detection for a Raspberry Pi 5 rover with multi-modal sensor telemetry.
 
-**Pipeline:** Roboflow Dataset → YOLOv8n Training (640×640) → OpenVINO FP16 Export → Pi 5 Live Inference + Sensor HUD
+**Pipeline:** Roboflow Dataset → YOLOv8m Training (800×800) → Hailo INT8 Export (.hef) → Pi 5 (AI HAT+) Live Inference + Sensor HUD
 
 ---
 
@@ -35,22 +35,23 @@ cd training
 python train.py
 
 # Or override via CLI
-python train.py --epochs 50 --imgsz 640 --batch 16
+python train.py --epochs 50 --imgsz 800 --batch 8
 ```
 
-### 2. Deploy to Raspberry Pi 5
+### 2. Deploy to Raspberry Pi 5 (with AI HAT+)
 
 ```bash
 # On the Pi — install dependencies
 pip install -r requirements/pi_requirements.txt
+# Ensure Hailo RT is installed on your Raspberry Pi!
 
-# Copy the exported model directory to the Pi
-# scp -r models/best_openvino_model/ pi@raspberrypi:~/chili-rover-ai/models/
+# Copy the exported model to the Pi
+# scp weights/hailo_model/best_hailo_model.hef pi@raspberrypi:~/chili-rover-ai/weights/hailo_model/
 
 # Run live inference (vision only)
 cd deployment
 python pi_inference.py
-python pi_inference.py --model ../models/best_openvino_model --camera 0 --confidence 0.45
+python pi_inference.py --model ../weights/hailo_model/best_hailo_model.hef --camera 0 --confidence 0.45
 python pi_inference.py --no-display --save   # Headless mode with output saving
 ```
 
@@ -80,7 +81,7 @@ chili-rover-ai/
 ├── config/
 │   └── pipeline_config.yaml       # All hyperparams, paths, and telemetry config
 ├── training/
-│   ├── train.py                    # Train + export pipeline (box=8.5, cls=2.0)
+│   ├── train.py                    # Train + export pipeline to Hailo
 │   └── augmentation.py             # Augmentation presets
 ├── deployment/
 │   ├── pi_inference.py             # Onboard real-time inference (vision only)
@@ -89,7 +90,7 @@ chili-rover-ai/
 ├── scripts/
 │   └── pi_combined_inference.py    # Vision + sensor telemetry HUD
 ├── datasets/                       # Roboflow dataset (4 classes)
-├── models/                         # Exported OpenVINO weights
+├── weights/                        # Exported Hailo models (.hef)
 ├── requirements/
 │   ├── train_requirements.txt
 │   └── pi_requirements.txt
@@ -105,9 +106,9 @@ All settings live in `config/pipeline_config.yaml`:
 | Section | Key Settings |
 |---|---|
 | `dataset` | Roboflow workspace, project, version, API key env var |
-| `training` | Model, epochs, batch size, imgsz=640, box=8.5, cls=2.0 |
+| `training` | Model (yolov8m), epochs, batch size, imgsz=800 |
 | `augmentation` | HSV jitter, rotation, scale, mosaic, mixup |
-| `export` | Format (OpenVINO), FP16 flag, imgsz=640, output directory |
+| `export` | Format (hef), INT8 flag, imgsz=800, output directory |
 | `deployment` | Model path, camera index, confidence, warm-up runs |
 | `telemetry` | Serial port, baud rate, timeout for MCU sensor data |
 
@@ -128,12 +129,12 @@ These values are overlaid as a live HUD panel on the camera feed.
 
 ## Performance Expectations
 
-| Metric | Raspberry Pi 5 |
+| Metric | Raspberry Pi 5 + AI HAT+ (Hailo-8) |
 |---|---|
-| FPS | 5–10 (at 640×640) |
-| Latency | 100–200 ms/frame |
-| Model size (FP16) | ~6 MB |
-| RAM usage | ~350 MB |
+| FPS | 30+ (at 800×800) |
+| Latency | <30 ms/frame |
+| Model size (INT8) | ~25 MB |
+| RAM usage | ~400 MB |
 
 ---
 
@@ -151,8 +152,7 @@ These values are overlaid as a live HUD panel on the camera feed.
 | Issue | Solution |
 |---|---|
 | Camera not detected | Run `v4l2-ctl --list-devices` or `libcamera-hello` |
-| Low FPS | Reduce `imgsz` to 320 in config (trades accuracy for speed) |
-| Import errors on Pi | Ensure `pip install ultralytics openvino` completed |
+| Import errors on Pi | Ensure `pip install ultralytics` and Hailo dependencies are met |
 | ROBOFLOW_API_KEY missing | `export ROBOFLOW_API_KEY="your_key"` before running |
 | Serial port not found | Check `ls /dev/ttyUSB*` or `ls /dev/ttyACM*` |
 | No sensor data | Verify MCU is sending JSON at the configured baud rate |

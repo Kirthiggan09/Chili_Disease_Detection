@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
 """
-ChiliRover AI — Raspberry Pi 5 Onboard Inference
+ChiliRover AI — Raspberry Pi 5 + AI HAT+ Onboard Inference
 ===================================================
 Production-ready real-time chili disease detection.
 
-• Loads an OpenVINO-optimized YOLOv8n model
+• Loads a Hailo-optimized YOLOv8m model (.hef)
 • Captures frames from Pi Camera / USB camera via OpenCV
-• Runs inference frame-by-frame at 640×640
+• Runs inference frame-by-frame at 800×800
 • Renders low-latency bounding boxes with class labels
 • Displays smoothed FPS counter
 
 Usage:
     python pi_inference.py
-    python pi_inference.py --model models/best_openvino_model
+    python pi_inference.py --model weights/hailo_model/best_hailo_model.hef
     python pi_inference.py --camera 0 --confidence 0.45
     python pi_inference.py --config ../config/pipeline_config.yaml
 """
@@ -73,16 +73,16 @@ def init_camera(camera_index: int = 0) -> cv2.VideoCapture:
 #  Model Initialisation
 # ===================================================================
 
-def init_model(model_path: str, warmup_runs: int = 3, imgsz: int = 320):
+def init_model(model_path: str, warmup_runs: int = 3, imgsz: int = 800):
     """
-    Load the OpenVINO YOLO model and run warm-up inferences.
+    Load the Hailo YOLO model and run warm-up inferences.
 
     Parameters
     ----------
     model_path : str
-        Path to the OpenVINO model directory (contains .xml + .bin).
+        Path to the Hailo Executable Format (.hef) model.
     warmup_runs : int
-        Number of dummy inferences to prime OpenVINO kernels.
+        Number of dummy inferences to prime execution kernels.
     imgsz : int
         Input resolution for warm-up frames.
 
@@ -102,17 +102,17 @@ def init_model(model_path: str, warmup_runs: int = 3, imgsz: int = 320):
         print("  Run training first or provide the correct --model path.")
         sys.exit(1)
 
-    print(f"[INFO] Loading model from: {model_path}")
+    print(f"[INFO] Loading Hailo model from: {model_path}")
     model = YOLO(str(model_path), task="detect")
 
-    # Warm-up: prime OpenVINO execution kernels for stable latency
-    print(f"[INFO] Running {warmup_runs} warm-up inferences...")
+    # Warm-up: prime Hailo execution kernels for stable latency
+    print(f"[INFO] Running {warmup_runs} warm-up inferences on Hailo NPU...")
     dummy = np.zeros((imgsz, imgsz, 3), dtype=np.uint8)
     for i in range(warmup_runs):
         model.predict(dummy, imgsz=imgsz, verbose=False)
         print(f"  Warm-up {i+1}/{warmup_runs} done")
 
-    print("[OK] Model ready.\n")
+    print("[OK] Hailo Model ready.\n")
     return model
 
 
@@ -123,7 +123,7 @@ def init_model(model_path: str, warmup_runs: int = 3, imgsz: int = 320):
 def run_inference_loop(
     model,
     cap: cv2.VideoCapture,
-    imgsz: int = 320,
+    imgsz: int = 800,
     confidence: float = 0.40,
     iou_threshold: float = 0.45,
     show_display: bool = True,
@@ -222,7 +222,7 @@ def run_inference_loop(
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="ChiliRover AI — Raspberry Pi 5 Real-Time Inference"
+        description="ChiliRover AI — Raspberry Pi 5 + AI HAT+ Real-Time Inference"
     )
     parser.add_argument(
         "--config", type=str,
@@ -231,7 +231,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--model", type=str, default=None,
-        help="Path to OpenVINO model directory",
+        help="Path to Hailo model (.hef)",
     )
     parser.add_argument("--camera", type=int, default=None, help="Camera index")
     parser.add_argument("--confidence", type=float, default=None)
@@ -254,9 +254,9 @@ def main():
     config = load_config(args.config)
     deploy = config.get("deployment", {})
 
-    model_path = args.model or deploy.get("model_path", "models/best_openvino_model")
+    model_path = args.model or deploy.get("model_path", "weights/hailo_model/best_hailo_model.hef")
     camera_idx = args.camera if args.camera is not None else deploy.get("camera_index", 0)
-    imgsz = args.imgsz or deploy.get("imgsz", 320)
+    imgsz = args.imgsz or deploy.get("imgsz", 800)
     confidence = args.confidence or deploy.get("confidence", 0.40)
     iou_threshold = deploy.get("iou_threshold", 0.45)
     warmup = deploy.get("warmup_runs", 3)

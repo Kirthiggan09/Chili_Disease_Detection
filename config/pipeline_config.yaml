@@ -18,8 +18,8 @@ dataset:
 
 # --- Training ---
 training:
-  model: "yolov8n.pt"                  # Base model (nano backbone)
-  imgsz: 640                           # Input resolution (px) — upgraded for early-lesion capture
+  model: "yolov8m.pt"                  # Base model (Upgraded to medium for Hailo-8 NPU)
+  imgsz: 800                           # Input resolution (px) — upgraded for early-lesion capture
   epochs: 100
   batch: 4                             # Reduce to 8 on low-VRAM GPUs
   patience: 20                         # Early-stop patience
@@ -47,16 +47,17 @@ augmentation:
 
 # --- Export ---
 export:
-  format: "openvino"
-  half: true                           # FP16 quantization
-  imgsz: 320                           # Aggressive optimization for Pi 5 live stream
-  output_dir: "weights/openvino_model"
+  format: "hef"                        # Hailo Executable Format for AI HAT+
+  half: false                          # Use INT8 for Hailo instead of FP16
+  int8: true                           # Hailo PTQ Quantization
+  imgsz: 800                           # High-res inference with Hailo NPU
+  output_dir: "weights/hailo_model"
 
-# --- Deployment (Raspberry Pi 5) ---
+# --- Deployment (Raspberry Pi 5 + AI HAT+) ---
 deployment:
-  model_path: "weights/openvino_model/best_openvino_model"
+  model_path: "weights/hailo_model/best_hailo_model.hef"
   camera_index: 0                      # 0 = default camera
-  imgsz: 320                           # Match export resolution (320px FP16)
+  imgsz: 800                           # Match export resolution
   confidence: 0.40                     # Minimum detection confidence
   iou_threshold: 0.45                  # NMS IoU threshold
   warmup_runs: 3                       # Inference warm-up iterations
